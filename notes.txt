@@ -1,0 +1,15 @@
+R:\ICT\ICT BIDS\Mapping Services\ArcGIS_Online\Published - Interactive Maps\HalifaxMapGallery2018\Upgrade 2020
+
+App item type methods
+'access', 'accessInformation', 'add_comment', 'add_relationship', 'appCategories', 'app_info', 'avgRating',
+'banner', 'categories', 'clear', 'comments', 'content_status', 'copy', 'copy_feature_layer_collection',
+'create_thumbnail', 'create_tile_service', 'created', 'culture', 'delete', 'delete_rating',
+'delete_relationship',
+'dependencies', 'dependent_to', 'dependent_upon', 'description', 'documentation', 'download', 'download_metadata',
+'download_thumbnail', 'export', 'extent', 'fromkeys', 'get', 'get_data', 'get_thumbnail', 'get_thumbnail_link',
+'groupDesignations', 'guid', 'homepage', 'id', 'industries', 'isOrgItem', 'itemid', 'items', 'keys', 'languages',
+'largeThumbnail', 'licenseInfo', 'listed', 'metadata', 'modified', 'move', 'name', 'numComments', 'numRatings',
+'numViews', 'owner', 'pop', 'popitem', 'properties', 'protect', 'proxies', 'proxyFilter', 'publish', 'rating',
+'reassign_to', 'register', 'related_items', 'resources', 'scoreCompleteness', 'screenshots', 'setdefault', 'share',
+'shared_with', 'snippet', 'spatialReference', 'status', 'tags', 'thumbnail', 'title', 'type', 'typeKeywords',
+'unregister', 'unshare', 'update', 'url', 'usage', 'values'
