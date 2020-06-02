@@ -1,40 +1,37 @@
-def get_app_data(my_items=False, owner='**', title='', access='', max_items=999):
-    print(f"Running {get_app_data.__name__} function...")
+def app_data_to_db(data, table):
+    """
+    Transfer data from json to db
+    :param data: list of dictionaries
+    :param table: gdb table
+    :return: Number of records inserted
+    """
+    print(f"Running {app_data_to_db.__name__}")
 
-    if my_items is True:
-        owner = gis.users.me.username
+    fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS', 'TYPE', 'DESCRIPTION_IDS', 'URL']
+    current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
 
-    access_types = ['private', 'shared', 'public']
-    if access not in access_types and len(access) > 0:
-        raise Exception(f"{access} is not recognized as a valid access type -> {', '.join(access_types)}")
-
-    query = f'owner:{owner} AND NOT owner:esri AND title:{title}* AND access:{access}*'
-
-    # Filter maps by title, creator, access
-    item_objs = gis.content.search(query=query, item_type='Web Mapping Application', max_items=max_items, outside_org=False)
-    data_objs = []
-
-    for obj in item_objs:
-        agol_ids = scrape_ids_from_description(obj.id)
-
-        data_obj = {
-            'id': obj.id,
-            'title': obj.title,
-            'owner': obj.owner,
-            'access': obj.access,
-            'num_views': obj.numViews,
-            'date_created': obj.created / 1000,
-            'date_modified': obj.modified / 1000,
-            'date_created_formatted': datetime.datetime.fromtimestamp(obj.created / 1000).strftime(
-                "%A, %B %d, %Y %I:%M:%S"),
-            'date_modified_formatted': datetime.datetime.fromtimestamp(obj.modified / 1000).strftime(
-                       "%A, %B %d, %Y %I:%M:%S"),
-            'type': obj.type,
-            'url': obj.url,
-            'description_ids': agol_ids
-        }
-
-        if data_obj not in data_objs:
-            data_objs.append(data_obj)
-
-    return data_objs
+    with arcpy.da.InsertCursor(table, fields) as cursor:
+        count = 0
+        for record in data:
+            if record['id'] not in current_ids:
+                desc_ids = record['description_ids']
+                if desc_ids is not None:
+                    if len(desc_ids) > 300:
+                        desc_ids = desc_ids[:297] + '...'
+                else:
+                    desc_ids = ''
+                cursor.insertRow((record['id'],
+                                  record['title'],
+                                  record['access'].upper(),
+                                  datetime.datetime.fromtimestamp(record['date_created']),
+                                  datetime.datetime.fromtimestamp(record['date_modified']),
+                                  record['owner'],
+                                  int(record['num_views']),
+                                  record['type'],
+                                  desc_ids,
+                                  record['url']
+                                  ))
+                print(f"\tInserted record: {record['id']}")
+                count += 1
+    if count > 0:
+        print(f"\t\t{count} records inserted.")

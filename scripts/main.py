@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # b) Send app data to db
     AGOL_maps_layers.remove_all_rows(app_feature)
-    AGOL_maps_layers.app_data_to_db(app_objs, app_feature)
+    AGOL_maps_layers.map_app_data_to_db(app_objs, app_feature)
 
     # 1) Get MAP Data
     map_objs = AGOL_maps_layers.get_map_app_data(item_type='map')
@@ -30,17 +30,17 @@ if __name__ == '__main__':
 
     # 2) Send map data to db
     AGOL_maps_layers.remove_all_rows(map_feature)
-    AGOL_maps_layers.map_data_to_db(data=map_objs, table=map_feature)
+    AGOL_maps_layers.map_app_data_to_db(data=map_objs, table=map_feature)
 
     # 3) Send layer data to db
-    AGOL_maps_layers.remove_all_rows(layer_feature)
-    layers_inserted = 0
-    for obj in map_objs:
-        print(obj)
-        layer_data = AGOL_maps_layers.get_layers_from_mapid(obj['id'])['layer_data']
-        layers_inserted += AGOL_maps_layers.layer_data_to_db(layer_data, layer_feature)
-        # pprint.pprint(layer_data)
-    print(f"\n{layers_inserted} layers inserted in total")
+    # AGOL_maps_layers.remove_all_rows(layer_feature)
+    # layers_inserted = 0
+    # for obj in map_objs:
+    #     print(obj)
+    #     layer_data = AGOL_maps_layers.get_layers_from_mapid(obj['id'])['layer_data']
+    #     layers_inserted += AGOL_maps_layers.layer_data_to_db(layer_data, layer_feature)
+    #     # pprint.pprint(layer_data)
+    # print(f"\n{layers_inserted} layers inserted in total")
 
     # # 4) Build map - layers lookup table
     # AGOL_maps_layers.remove_all_rows(layers_maps_table)
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     #
     # # 5) Check for duplicates
     # AGOL_maps_layers.check_duplicates(app_feature)
-    AGOL_maps_layers.check_duplicates(map_feature)
+    # AGOL_maps_layers.check_duplicates(map_feature)
     # AGOL_maps_layers.check_duplicates(layer_feature)
     # AGOL_maps_layers.check_duplicates(layers_maps_table)
     # AGOL_maps_layers.check_duplicates(app_service_table)
@@ -62,7 +62,6 @@ if __name__ == '__main__':
     print(datetime.datetime.now())
 
 # TO DO
-# Merge functions for get_app_data, get_map_data
 # Merge functions for app_data_to_db, map_data_to_db
 
 # Implement default values using OR operator

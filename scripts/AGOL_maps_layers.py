@@ -250,22 +250,25 @@ def layer_data_to_db(data, table):
     return count
 
 
-def app_data_to_db(data, table):
+def map_app_data_to_db(data, table):
     """
-    Transfer app data from json to db
+    Transfer data from json to db
     :param data: list of dictionaries
     :param table: gdb table
     :return: Number of records inserted
+    Account for deleted maps? Bulk refresh? Append new?
     """
-    print(f"Running {app_data_to_db.__name__}")
+    print(f"Running {map_app_data_to_db.__name__}")
 
-    fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS', 'TYPE', 'URL', 'DESCRIPTION_IDS']
-    current_appids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
+    # Need to identify appropriate table fields for records
+    fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS', 'TYPE', 'DESCRIPTION_IDS',
+              'URL']
+    current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
 
     with arcpy.da.InsertCursor(table, fields) as cursor:
         count = 0
         for record in data:
-            if record['id'] not in current_appids:
+            if record['id'] not in current_ids:
                 desc_ids = record['description_ids']
                 if desc_ids is not None:
                     if len(desc_ids) > 300:
@@ -280,50 +283,10 @@ def app_data_to_db(data, table):
                                   record['owner'],
                                   int(record['num_views']),
                                   record['type'],
-                                  record['url'],
-                                  desc_ids
-                                  ))
-                print(f"\tInserted app: {record['id']}")
-                count += 1
-    if count > 0:
-        print(f"\t\t{count} records inserted.")
-
-
-def map_data_to_db(data, table):
-    """
-    Transfer map data from json to db
-    :param data: list of dictionaries
-    :param table: gdb table
-    :return: Number of records inserted
-    Account for deleted maps? Bulk refresh? Append new?
-    """
-    print(f"Running {map_data_to_db.__name__}")
-
-    fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'TYPE', 'DESCRIPTION_IDS', 'NUM_VIEWS', 'URL']
-    current_mapids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
-
-    with arcpy.da.InsertCursor(table, fields) as cursor:
-        count = 0
-        for record in data:
-            if record['id'] not in current_mapids:
-                desc_ids = record['description_ids']
-                if desc_ids is not None:
-                    if len(desc_ids) > 300:
-                        desc_ids = desc_ids[:297] + '...'
-                else:
-                    desc_ids = ''
-                cursor.insertRow((record['id'],
-                                  record['title'],
-                                  record['access'].upper(),
-                                  datetime.datetime.fromtimestamp(record['date_created']),
-                                  datetime.datetime.fromtimestamp(record['date_modified']),
-                                  record['owner'],
-                                  record['type'],
                                   desc_ids,
-                                  record['num_views'],
                                   record['url']
                                   ))
-                print(f"\tInserted map: {record['id']}")
+                print(f"\tInserted record: {record['id']}")
                 count += 1
     if count > 0:
         print(f"\t\t{count} records inserted.")
