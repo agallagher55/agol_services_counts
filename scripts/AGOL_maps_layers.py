@@ -57,6 +57,7 @@ def remove_all_rows(table):
 
 
 # GET DATA FROM AGOL
+# MAP, APP DATA
 def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=999, item_type='MAP'):
     """
     :param my_items: Get maps the belong to current user
@@ -65,7 +66,7 @@ def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=
     :param access: ['private', 'shared', 'public']
     :param max_items:
     :param item_type: MAP, APP
-    :return: list of map objects - title, type, id, created date, access attributes
+    :return: list of map objects - [{}, {}, {},...] title, type, id, created date, access attributes
     Filter maps by created date, modified date, creator, access
     """
 
@@ -113,6 +114,29 @@ def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=
     return data_objs
 
 
+# LAYER DATA
+def clean_layer_data(layer_data):
+    """
+    - Interpolate missing layer ids
+    - If layer has no id, it may be a copy of a layer
+    - Remove layer that has same url of other layer that also has an id?
+    :param layer_data: list output from get_map_layer_data function
+    :return: list of dictionaries with interpolated results - updated id field, updated agol_url field, id_assumed field
+    """
+    for layer in layer_data:
+        if 'id' is False or 'id' not in list(layer.keys()):
+
+            # Iterate through data again to find original layer - layer with same url but with an id
+            for x in layer_data:
+                if x['url'] == layer['url'] and 'id' in list(x.keys()):
+                    layer['id'] = x['id']
+                    layer['agol_url'] = f"https://hrm.maps.arcgis.com/home/item.html?id={layer['id']}"
+                    layer['assumed_id'] = True
+
+    return layer_data
+
+
+# LAYER DATA, FROM MAPS
 def search_maps_for_layers(layer_id, maps_data):
     """
     Search for maps that contain a layer
@@ -137,27 +161,7 @@ def search_maps_for_layers(layer_id, maps_data):
     return map_data
 
 
-def clean_layer_data(layer_data):
-    """
-    - Interpolate missing layer ids
-    - If layer has no id, it may be a copy of a layer
-    - Remove layer that has same url of other layer that also has an id?
-    :param layer_data: list output from get_map_layer_data function
-    :return: list of dictionaries with interpolated results - updated id field, updated agol_url field, id_assumed field
-    """
-    for layer in layer_data:
-        if 'id' is False or 'id' not in list(layer.keys()):
-
-            # Iterate through data again to find original layer - layer with same url but with an id
-            for x in layer_data:
-                if x['url'] == layer['url'] and 'id' in list(x.keys()):
-                    layer['id'] = x['id']
-                    layer['agol_url'] = f"https://hrm.maps.arcgis.com/home/item.html?id={layer['id']}"
-                    layer['assumed_id'] = True
-
-    return layer_data
-
-
+# LAYER DATA, FROM MAPS
 def get_layers_from_mapid(map_id):
     """
     :param map_id: AGOL unique item ID
@@ -205,94 +209,66 @@ def get_layers_from_mapid(map_id):
             'layer_data': cleaned_results}
 
 
-# EXPORT DATA TO DB
-def layer_data_to_db(data, table):
-    """
-    Transfer map data from json to db
-    :param data: List of dictionaries
-    :param table: gdb table
-    :return: number of inserted records
-
-    Bugs
-    Account for deleted maps? Bulk refresh? Append new?
-    Multiple Ids recorded
-    """
-
-    print(f"Running {layer_data_to_db.__name__}...")
-
-    fields = ['ID', 'LAYER_NAME', 'AGOL_URL', 'TYPE', 'SERVICE_URL', 'DEFINITION_EXPRESSION']
-    current_layerids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
-
-    with arcpy.da.InsertCursor(table, fields) as cursor:
-        count = 0
-
-        for record in data:
-            if record['id'] != 0 and record['id'] not in current_layerids and record['assumed_id'] is False:
-                # print(f"\t{record}")
-
-                if record['definition']:
-                    definition_val = record['definition'][:295] + '...'
-                else:
-                    definition_val = False
-
-                cursor.insertRow((record['id'],
-                                  record['layer'],
-                                  record['agol_url'],
-                                  record['type'],
-                                  record['url'],
-                                  definition_val,
-                                  ))
-                print(f"\t\tInserted layer: {record['layer']}")
-                count += 1
-
-    if count > 0:
-        print(f"\t\t{count} record(s) inserted.")
-    return count
-
-
+# EXPORT DATA
 def map_app_data_to_db(data, table):
     """
-    Transfer data from json to db
-    :param data: list of dictionaries
-    :param table: gdb table
+    Transfer data to db
+    :param data: list of objects [{}, {}, {},...]
+    :param table: output table - [mapinfo/appinfo]
     :return: Number of records inserted
     Account for deleted maps? Bulk refresh? Append new?
     """
+
     print(f"Running {map_app_data_to_db.__name__}")
 
     # Need to identify appropriate table fields for records
     fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS', 'TYPE', 'DESCRIPTION_IDS',
               'URL']
     current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
+    # Filter out ids already in target table
+    data = [obj for obj in data if obj['id'] not in current_ids and obj['id'] != 0]
 
     with arcpy.da.InsertCursor(table, fields) as cursor:
         count = 0
+        new_rows_added = []
+
+        # Iterate over input data
         for record in data:
-            if record['id'] not in current_ids:
+            if record not in new_rows_added:
+                # Data Sanitizing
                 desc_ids = record['description_ids']
                 if desc_ids is not None:
-                    if len(desc_ids) > 300:
-                        desc_ids = desc_ids[:297] + '...'
+                    desc_ids = desc_ids[:297] + '...' if len(desc_ids) > 300 else record['description_ids']
                 else:
                     desc_ids = ''
-                cursor.insertRow((record['id'],
-                                  record['title'],
-                                  record['access'].upper(),
-                                  datetime.datetime.fromtimestamp(record['date_created']),
-                                  datetime.datetime.fromtimestamp(record['date_modified']),
-                                  record['owner'],
-                                  int(record['num_views']),
-                                  record['type'],
-                                  desc_ids,
-                                  record['url']
-                                  ))
+
+                add_row = (record['id'],
+                           record['title'],
+                           record['access'].upper(),
+                           datetime.datetime.fromtimestamp(record['date_created']),
+                           datetime.datetime.fromtimestamp(record['date_modified']),
+                           record['owner'],
+                           int(record['num_views']),
+                           record['type'],
+                           desc_ids,
+                           record['url']
+                           )
+                cursor.insertRow(add_row)
                 print(f"\tInserted record: {record['id']}")
+                new_rows_added.append(add_row)
                 count += 1
     if count > 0:
-        print(f"\t\t{count} records inserted.")
+        print(f"\t\t{count} record(s) inserted.")
+    return count
 
 
 def layer_map_to_db(map_data, table):
+    """
+    Transfer layer data to db
+    :param map_data: list of map objects [{}, {}, {},...]
+    :param table: output table
+    :return: Number of rows inserted
+    """
     print(f"Running {layer_map_to_db.__name__}")
 
     fields = ['LAYER_ID', 'MAP_ID']
@@ -347,7 +323,7 @@ def appid_serviceid_to_db(app_table, appid_serviceid_table):
                 service_ids = agol_ids.split('|')
 
                 if agol_ids[0] != '':
-                    print(f"{app_id}: {service_ids}")
+                    print(f"\t{app_id}: {service_ids}")
 
                     if len(service_ids) == 1:
                         add_row = (app_id, service_ids[0])

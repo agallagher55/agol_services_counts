@@ -26,13 +26,13 @@ if __name__ == '__main__':
 
     # 1) Get MAP Data
     map_objs = AGOL_maps_layers.get_map_app_data(item_type='map')
-    # pprint.pprint(map_objs)
+    pprint.pprint(map_objs)
 
-    # 2) Send map data to db
+    # # 2) Send map data to db
     AGOL_maps_layers.remove_all_rows(map_feature)
     AGOL_maps_layers.map_app_data_to_db(data=map_objs, table=map_feature)
 
-    # 3) Send layer data to db
+    # # 3) Send layer data to db
     # AGOL_maps_layers.remove_all_rows(layer_feature)
     # layers_inserted = 0
     # for obj in map_objs:
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     #     layers_inserted += AGOL_maps_layers.layer_data_to_db(layer_data, layer_feature)
     #     # pprint.pprint(layer_data)
     # print(f"\n{layers_inserted} layers inserted in total")
-
+    #
     # # 4) Build map - layers lookup table
     # AGOL_maps_layers.remove_all_rows(layers_maps_table)
     # AGOL_maps_layers.layer_map_to_db(map_objs, layers_maps_table)
@@ -62,19 +62,15 @@ if __name__ == '__main__':
     print(datetime.datetime.now())
 
 # TO DO
-# Merge functions for app_data_to_db, map_data_to_db
+# Merge functions - function cleanup
 
 # Implement default values using OR operator
 
 # ADD populate_appid_mapid_table
 
-# Remove description IDs from Apps table - impacts QA Script
+# Remove description IDs from Apps table? - impacts QA Script
 # If map references app id, add map id if not present in app table
-# Merge functions - function cleanup
 
 # ALL APPS SHOULD HAVE A REFERENCE ID TO MAP - CHECK PERSONAL APPS
 # Decorator logging function
 
-# SETUP - See which layers are in which apps
-# Join lookup table to map table
-# Add relate from layer table to lookup table
