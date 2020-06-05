@@ -13,3 +13,22 @@ App item type methods
 'reassign_to', 'register', 'related_items', 'resources', 'scoreCompleteness', 'screenshots', 'setdefault', 'share',
 'shared_with', 'snippet', 'spatialReference', 'status', 'tags', 'thumbnail', 'title', 'type', 'typeKeywords',
 'unregister', 'unshare', 'update', 'url', 'usage', 'values'
+
+MAP - ID f5882f245099474bb6dae79a0359ddb9
+
+Missing layers
+- Community Plan Area - 889ce1b5867b4b7aad93bdc4b4ddb6e8
+- View Plane - 4c478b354ccd4b15bf43747626cf96d6
+
+
+ {'access': 'public',
+  'date_created': 1392750235.0,
+  'date_modified': 1484057846.0,
+  'description_ids': None,
+  'id': 'c5e60f81048d49139ae24e916bd862d6',
+  'num_views': 1188,
+  'owner': 'halifax_agol',
+  'title': 'Halifax_International_Airport',
+  'type': 'Feature Service',
+  'url': 'https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Halifax_International_Airport/FeatureServer'
+  },
