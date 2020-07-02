@@ -1,0 +1,21 @@
+APP,APP_ID,MAP,LAYERS,URLS
+Drivers,56ff4e4f08644004b8e7978051320a90,HRM Mode Share Auto Driver Map
+,,,Number of Jobs,https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Centroids_for_HRM_Mode_Share_Sept_9/FeatureServer/0
+,,,Dwelling Unit Density (# units / hectare),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Centroids_for_HRM_Mode_Share_Sept_9/FeatureServer/0
+,,,Population Density (# persons / hectare),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Centroids_for_HRM_Mode_Share_Sept_9/FeatureServer/0
+,,,IMP - Planned Transit Routes,https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/IMP_Hosted_Layers/FeatureServer/3
+,,,Transit Routes,https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/BusRoutes/FeatureServer/0
+,,,Integrated Mobility Plan 2022 Regional Centre Bikeway Network Map,https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Integrated_Mobility_Plan_2022_Regional_Centre_Bikeway_Network_Map/FeatureServer/0
+,,,Bike Infrastructure and Suggested Routes,https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/Bike_Infrastructure_and_Suggested_Routes/FeatureServer/0
+,,,2016 Auto Drivers by Census Tract (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2016 Auto Drivers by Census Tract (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2011 Auto Drivers by Census Tract (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2011 Auto Drivers by Census Tract (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2006 Auto Drivers by Census Tract (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2006 Auto Drivers by Census Tract (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/1
+,,,2016 Auto Drivers by Consolidated Traffic Zone (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0
+,,,2016 Auto Drivers by Consolidated Traffic Zone (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0
+,,,2011 Auto Drivers by Consolidated Traffic Zone (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0
+,,,2011 Auto Drivers by Consolidated Traffic Zone (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0
+,,,2006 Auto Drivers by Consolidated Traffic Zone (Origin),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0
+,,,2006 Auto Drivers by Consolidated Traffic Zone (Destination),https://services2.arcgis.com/11XBiaBYA9Ep0yNJ/arcgis/rest/services/ModeShare_AGOL_March11/FeatureServer/0

@@ -3,3 +3,6 @@ notebooks
 .idea
 *.ipynb
 ~$*
+mapData.json
+notes.txt
+sandbox

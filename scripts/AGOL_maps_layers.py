@@ -5,21 +5,23 @@ import re
 from arcgis.gis import GIS
 from arcgis.mapping import WebMap
 
+import scripts.decorators as decorators
+
 gis = GIS('pro')
 
 
 # Utility Functions
+@decorators.debug
 def scrape_ids_from_description(item_id):
     """
+    Scrape service IDs from service description
     :param item_id: id of AGOL item
     :return: string of ids separated by '|'
     """
+
     item = gis.content.get(item_id)
     pattern = r'\b\w{32}\b'
 
-    print(f"Running {scrape_ids_from_description.__name__} function on {item_id}...")
-
-    # agol_ids = ''
     if item.description is not None:
         agol_ids = '|'.join(set(filter(lambda x: x != item.id, re.findall(pattern, item.description))))
 
@@ -28,46 +30,40 @@ def scrape_ids_from_description(item_id):
             return agol_ids
 
 
-def check_duplicates(feature):
-    print(f"Running {check_duplicates.__name__} function on {feature}...")
+@decorators.debug
+def duplicates(feature, remove=False):
     fields = [f.name for f in arcpy.ListFields(feature) if f.name != 'OBJECTID']
     data = [row for row in arcpy.da.SearchCursor(feature, fields)]
     dups = len(data) - len(set(data))
 
     if dups > 0:
         print(f"\t{dups} duplicate rows found in {feature}")
-        return dups
+
+        if remove:
+            del_count = 0
+            rows_processed = []
+            with arcpy.da.UpdateCursor(feature, fields) as cursor:
+                for row in cursor:
+                    if row not in rows_processed:
+                        rows_processed.append(row)
+                    else:
+                        cursor.deleteRow()
+                        del_count += 1
+            print(f"\tDeleted {del_count} records")
+            del cursor
+            return del_count
+
+        else:
+            return dups
 
 
-def remove_duplicates(feature):
-    print(f"Running {remove_duplicates.__name__} function on {feature}...")
-    fields = [f.name for f in arcpy.ListFields(feature) if f.name != 'OBJECTID']
-    data = [row for row in arcpy.da.SearchCursor(feature, fields)]
-    dups = len(data) - len(set(data))
-
-    if dups > 0:
-        print(f"\t{dups} duplicate rows found in {feature}")
-        del_count = 0
-        rows_processed = []
-        with arcpy.da.UpdateCursor(feature, fields) as cursor:
-            for row in cursor:
-                if row not in rows_processed:
-                    rows_processed.append(row)
-                else:
-                    cursor.deleteRow()
-                    del_count += 1
-        print(f"\tDeleted {del_count} records")
-        del cursor
-        return del_count
-
-
+@decorators.debug
 def remove_all_rows(table):
     """
     Remove all rows from table
     :param table:
     :return: number of rows deleted
     """
-    print(f"Running {remove_all_rows.__name__} function on {table}...")
     with arcpy.da.UpdateCursor(table, "*") as cur:
         del_count = 0
         for row in cur:
@@ -79,76 +75,19 @@ def remove_all_rows(table):
 
 
 # GET DATA FROM AGOL
-# MAP, APP DATA
-def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=999, item_type='MAP'):
-    """
-    :param my_items: Get maps the belong to current user
-    :param owner: Owner account
-    :param title:
-    :param access: ['private', 'shared', 'public']
-    :param max_items:
-    :param item_type: MAP, APP
-    :return: list of map objects - [{}, {}, {},...] title, type, id, created date, access attributes
-    Filter maps by created date, modified date, creator, access
-    """
-
-    print(f"Running {get_map_app_data.__name__} function...")
-    valid_item_types = {
-        'MAP': 'Web Map', 'APP': 'Web Mapping Application',
-        'LAYER': 'Feature Service', 'COLLECTION': 'Feature Collection'
-    }
-
-    assert item_type.upper() in valid_item_types.keys()
-
-    if my_items is True:
-        owner = gis.users.me.username
-
-    access_types = ['private', 'shared', 'public']
-    if access not in access_types and len(access) > 0:
-        raise Exception(f"{access} is not recognized as a valid access type -> {', '.join(access_types)}")
-
-    query = f'owner:{owner} AND NOT owner:esri AND title:{title}* AND access:{access}*'
-
-    # Filter maps by title, creator, access
-    item_objs = gis.content.search(query=query, item_type=valid_item_types[item_type.upper()], max_items=max_items, outside_org=False)
-    data_objs = []
-
-    for obj in item_objs:
-        agol_ids = scrape_ids_from_description(obj.id)
-
-        data_obj = {
-            'id': obj.id,
-            'title': obj.title,
-            'owner': obj.owner,
-            'access': obj.access,
-            'num_views': obj.numViews,
-            'date_created': obj.created / 1000,
-            'date_modified': obj.modified / 1000,
-            'type': obj.type,
-            'url': obj.url,
-            # 'description_ids': agol_ids
-        }
-
-        if agol_ids:
-            data_obj['description_ids'] = agol_ids
-
-        if data_obj not in data_objs:
-            data_objs.append(data_obj)
-
-    return data_objs
-
-
-# LAYER DATA
+@decorators.debug
 def clean_layer_data(layer_data):
     """
+    :param layer_data: list output from get_map_layer_data function
+    :return: list of dictionaries with interpolated results - updated id, agol_url, & id_assumed fields
     - Interpolate missing layer ids
     - If layer has no id, it may be a copy of a layer
     - Remove layer that has same url of other layer that also has an id?
-    :param layer_data: list output from get_map_layer_data function
-    :return: list of dictionaries with interpolated results - updated id field, updated agol_url field, id_assumed field
     """
+
     for layer in layer_data:
-        if 'id' is False or 'id' not in list(layer.keys()):
+        print(layer)
+        if layer['id'] is False or 'id' not in list(layer.keys()):  # REVIEW THIS LINE
 
             # Iterate through data again to find original layer - layer with same url but with an id
             for x in layer_data:
@@ -160,111 +99,48 @@ def clean_layer_data(layer_data):
     return layer_data
 
 
-# LAYER DATA, FROM MAPS
-def search_maps_for_layer(layer_id, maps_data):
+# MAP, APP, LAYER DATA
+@decorators.debug
+def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=999, item_type='MAP'):
     """
-    Search for maps that contain a layer
-    :param layer_id: id of layer you wish to query maps for
-    :param maps_data: list of map objects to search
-    :return: {layer_id: [map_id: map_title]}
+    :param my_items: Get maps the belong to current user
+    :param owner: Owner account
+    :param title: Search for services by item title
+    :param access: ['private', 'shared', 'public']
+    :param max_items:
+    :param item_type: MAP, APP
+    :return: list of objects - [{}, {}, {},...] title, type, id, created date, access attributes
+    Filter maps by created date, modified date, creator, access
     """
 
-    print(f"Running {search_maps_for_layer.__name__}...")
+    valid_item_types = {
+        'MAP': 'Web Map',
+        'APP': 'Web Mapping Application',
+        'LAYER': 'Feature Service',
+        'COLLECTION': 'Feature Collection'
+    }
 
-    map_data = {layer_id: []}
-    layer_title = gis.content.get(layer_id).title
+    if item_type.upper() not in valid_item_types.keys():
+        raise Exception(f"{item_type.upper()} is not a valid service item type!")
 
-    for obj in maps_data:
-        print(obj)
-        if layer_id == obj['id']:
-            print(f"Found layer {layer_title} in {obj['title']} map")
-            map_data[layer_id].append({obj['id']: obj['title']})
+    access_types = ['private', 'shared', 'public']
+    if access not in access_types and len(access) > 0:
+        raise Exception(f"{access} is not recognized as a valid access type -> {', '.join(access_types)}")
 
-    pprint.pprint(map_data)
-    return map_data
+    if my_items:
+        owner = gis.users.me.username
 
+    query = f'owner:{owner} AND NOT owner:esri AND title:{title}* AND access:{access}*'
 
-# LAYER DATA, FROM MAPS
-def get_layers_from_mapid(map_id):
-    """
-    :param map_id: AGOL unique item ID
-    :return: list of objects containing layer information (ARCGISFeatureLayers) associated with map ID
-            {'title': wm_item.item.title,
-            'map_id': map_id,
-            'layer_data': cleaned_results}
-    """
-    wm_item = WebMap(gis.content.get(map_id))
-    print(f"\nProcessing {get_layers_from_mapid.__name__} for map: {wm_item.item.title}...")
-
-    results = []
-
-    if wm_item.layers:
-        # all_url_ids = [layer['url'] for layer in get_map_app_data(item_type='LAYER')]
-        query = f'owner:* AND NOT owner:esri AND title:* AND access:*'
-        layer_search = gis.content.search(query=query,
-                                          item_type='Feature Service',
-                                          max_items=1000,
-                                          outside_org=False)
-        all_url_ids = [{'url': layer.url, 'id': layer.id} for layer in layer_search]
-        # pprint.pprint(all_url_ids)
-
-        for layer in wm_item.layers:
-
-            result = {
-                'id_name': layer.id,
-                'title': layer.title,
-                # 'definition': False,
-                'url': layer.url if 'url' in layer.keys() else False,
-                'id': layer.itemId if "itemId" in list(layer.keys()) else False,
-                'assumed_id': False,
-                'type': layer.layerType if "layerType" in layer.keys() else False
-            }
-
-            if 'layerDefinition' in layer.keys():
-                if 'definitionExpression' in layer.layerDefinition.keys():
-                    result['definition'] = layer.layerDefinition.definitionExpression
-
-            # If no item id, cross reference with all layers table using url to get id
-            if result['id'] is False:
-                if result['url']:
-                    result_url = result['url'].strip(r'/0')
-                    # print(f'\nSearching for match with "{result_url}"')
-                    # print(result)
-
-                    # Search all layers table for matching url
-                    for url_id in all_url_ids:
-                        target_url = url_id['url']
-                        # print(f"\t'{target_url}'")
-                        if result_url.upper() in url_id['url'].upper():
-                            # print("\tMATCH FOUND")
-                            result['id'] = url_id['id']
-                            result['assumed_id'] = True
-                            break
-
-            results.append(result)
-
-    cleaned_results = clean_layer_data(results)
-    return {'title': wm_item.item.title,
-            'map_id': map_id,
-            'layer_data': cleaned_results}
-
-
-def get_layer_data(my_items=False, owner='**', title='', access='', max_items=999, item_type='MAP'):
-    query = f'owner:** AND NOT owner:esri AND title:* AND access:*'
-    item_objs = gis.content.search(query=query, item_type='Feature Service', max_items=1000,
+    # Filter services by title, creator, access
+    item_objs = gis.content.search(query=query,
+                                   item_type=valid_item_types[item_type.upper()],
+                                   max_items=max_items,
                                    outside_org=False)
-
     data_objs = []
+
     for obj in item_objs:
         agol_ids = scrape_ids_from_description(obj.id)
-        # print(dir(obj))
-        # print(f"\nobj.name: {obj.name}")
-        # print(f"obj.layers: {obj.layers}")
-        # # print(f"obj.layers: {obj.keys()}")
-        # if 'layerDefinition' in obj.keys():
-        #     if 'definitionExpression' in obj.layerDefinition.keys():
-                # result['definition'] = obj.layerDefinition.definitionExpression
-                # print(f"DEF EXPRESSION: {obj.layerDefinition.definitionExpression}")
 
         data_obj = {
             'id': obj.id,
@@ -276,8 +152,6 @@ def get_layer_data(my_items=False, owner='**', title='', access='', max_items=99
             'date_modified': obj.modified / 1000,
             'type': obj.type,
             'url': obj.url,
-            # 'definition': '',
-            # 'description_ids': agol_ids
         }
 
         if agol_ids:
@@ -289,7 +163,67 @@ def get_layer_data(my_items=False, owner='**', title='', access='', max_items=99
     return data_objs
 
 
+# LAYER DATA, FROM MAPS
+@decorators.debug
+def get_layers_from_mapid(map_id):
+    """
+    :param map_id: AGOL unique item ID
+    :return: list of objects containing layer information (ARCGISFeatureLayers) associated with map ID
+            {'title': web_map_item.item.title,
+            'map_id': map_id,
+            'layer_data': cleaned_results}
+    """
+    web_map_item = WebMap(gis.content.get(map_id))
+    print(f"\nProcessing {get_layers_from_mapid.__name__} for map: {web_map_item.item.title}...")
+
+    results = []
+
+    if web_map_item.layers:
+        query = f'owner:* AND NOT owner:esri AND title:* AND access:*'
+        layer_search = gis.content.search(query=query,
+                                          item_type='Feature Service',
+                                          max_items=1000,
+                                          outside_org=False)
+        layer_url_ids = [{'url': layer.url, 'id': layer.id} for layer in layer_search]
+
+        for layer in web_map_item.layers:
+
+            result = {
+                'id': layer.itemId if "itemId" in list(layer.keys()) else False,
+                'assumed_id': False,
+                'id_name': layer.id,
+                'title': layer.title,
+                'url': layer.url if 'url' in layer.keys() else False,
+                'type': layer.layerType if "layerType" in layer.keys() else False
+            }
+
+            if 'layerDefinition' in layer.keys():
+                if 'definitionExpression' in layer.layerDefinition.keys():
+                    result['definition'] = layer.layerDefinition.definitionExpression
+
+            # If no item id, cross reference with all layers table using url to get id
+            if result['id'] is False:
+                if result['url']:
+                    result_url = result['url'].strip(r'/0')
+
+                    # Search all layers (in current webmap) table for matching url
+                    for url_id in layer_url_ids:
+                        if result_url.upper() in url_id['url'].upper():
+                            # print("\tMATCH FOUND")
+                            result['id'] = url_id['id']
+                            result['assumed_id'] = True
+                            break
+
+            results.append(result)
+
+    cleaned_results = clean_layer_data(results)
+    return {'title': web_map_item.item.title,
+            'map_id': map_id,
+            'layer_data': cleaned_results}
+
+
 # EXPORT DATA
+@decorators.debug
 def map_app_data_to_db(data, table):
     """
     Transfer data to db
@@ -299,13 +233,12 @@ def map_app_data_to_db(data, table):
     Account for deleted maps? Bulk refresh? Append new?
     """
 
-    print(f"Running {map_app_data_to_db.__name__}")
-
     # Need to identify appropriate table fields for records
     fields = ['ID', 'TITLE', 'ACCESS', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS', 'TYPE', 'DESCRIPTION_IDS',
               'URL']
-    current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
+
     # Filter out ids already in target table
+    current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
     data = [obj for obj in data if obj['id'] not in current_ids and obj['id'] != 0]
 
     with arcpy.da.InsertCursor(table, fields) as cursor:
@@ -315,6 +248,7 @@ def map_app_data_to_db(data, table):
         # Iterate over input data
         for record in data:
             if record not in new_rows_added:
+
                 # Data Sanitizing
                 # if desc_ids is not None:
                 if 'description_ids' in record:
@@ -343,6 +277,7 @@ def map_app_data_to_db(data, table):
     return count
 
 
+@decorators.debug
 def layer_data_to_db(data, table, from_map_id=False):
     """
     Transfer data to db
@@ -409,50 +344,7 @@ def layer_data_to_db(data, table, from_map_id=False):
     return count
 
 
-# def layer_data_to_db(data, table):
-#     """
-#     Transfer data to db
-#     :param data: list of objects [{}, {}, {},...]
-#     :param table: gdb table
-#     :return: Number of records inserted
-#     Account for deleted maps? Bulk refresh? Append new?
-#     """
-#
-#     print(f"Running {layer_data_to_db.__name__}...")
-#
-#     # Need to identify appropriate table fields for records
-#     fields = ['ID', 'LAYER_NAME', 'AGOL_URL', 'TYPE', 'SERVICE_URL', 'DEFINITION_EXPRESSION']
-#     current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
-#     # Filter out ids already in target table
-#     data = [obj for obj in data if obj['id'] not in current_ids and obj['id'] != 0]
-#
-#     with arcpy.da.InsertCursor(table, fields) as cursor:
-#         count = 0
-#         new_rows_added = []
-#
-#         # Iterate over input data
-#         for record in data:
-#             if record not in new_rows_added:
-#                 # Data Sanitization
-#                 if record['assumed_id'] is False:
-#                     definition_val = record['definition'][:295] + '...' if record['definition'] else False
-#                     add_row = (record['id'],
-#                                record['layer'],
-#                                record['agol_url'],
-#                                record['type'],
-#                                record['url'],
-#                                definition_val,
-#                                )
-#                     cursor.insertRow(add_row)
-#                     print(f"\t\tInserted record: {record['layer']}")
-#                     new_rows_added.append(add_row)
-#                     count += 1
-#
-#     if count > 0:
-#         print(f"\t\t{count} record(s) inserted.")
-#     return count
-
-
+@decorators.debug
 def layer_map_to_db(map_data, table):
     """
     Transfer layer data to db
@@ -487,54 +379,54 @@ def layer_map_to_db(map_data, table):
     print(f"\tAdded {len(added_rows)} rows")
 
 
+@decorators.debug
 def appid_serviceid_to_db(app_table, appid_serviceid_table):
     """
-    Send APP_IDs, related SERVICE_IDs to separate table
+    APP ID - Scraped Service IDs
     :param app_table: Table with app data
-    :param appid_serviceid_table:
+    :param appid_serviceid_table: output tables
     :return: total rows added
     """
 
-    print(f"Running {appid_serviceid_to_db.__name__}")
-
-    app_fields = ['ID']
+    app_id_fields = ['ID', 'DESCRIPTION_IDS']
     app_service_fields = ['APP_ID', 'SERVICE_ID']
     app_service_data = [row for row in arcpy.da.SearchCursor(appid_serviceid_table, app_service_fields)]
 
-    with arcpy.da.SearchCursor(app_table, field_names=app_fields) as cursor:
-        uCur = arcpy.da.InsertCursor(appid_serviceid_table, app_service_fields)
+    with arcpy.da.SearchCursor(app_table, field_names=app_id_fields) as cursor:
+        ucur = arcpy.da.InsertCursor(appid_serviceid_table, app_service_fields)
 
         for row in cursor:
             app_id = row[0]
+            agol_ids = row[1]
             print(f"\nAPP ID: {app_id}")
+            print(f"AGOL IDs: {agol_ids}")
 
-            agol_ids = scrape_ids_from_description(app_id)
+            if agol_ids and len(agol_ids) > 295:
+                agol_ids = scrape_ids_from_description(app_id)
+
             rows_inserted = 0
 
-            if agol_ids:
-                service_ids = agol_ids.split('|')
+            if agol_ids and agol_ids[0] != '':
+                agol_ids = agol_ids.split("|")
 
-                if agol_ids[0] != '':
-                    print(f"\t{app_id}: {service_ids}")
+                if len(agol_ids) == 1:
+                    add_row = (app_id, agol_ids[0])
 
-                    if len(service_ids) == 1:
-                        add_row = (app_id, service_ids[0])
+                    if add_row not in app_service_data:
+                        ucur.insertRow(add_row)
+                        rows_inserted += 1
+                        print(f"\tADDED ROW: {add_row}")
+
+                else:  # App can reference multiple services
+                    for agol_id in agol_ids:
+                        add_row = (app_id, agol_id)
 
                         if add_row not in app_service_data:
-                            uCur.insertRow(add_row)
+                            ucur.insertRow(add_row)
                             rows_inserted += 1
                             print(f"\tADDED ROW: {add_row}")
 
-                    else:
-                        for id in service_ids:
-                            add_row = (app_id, id)
-
-                            if add_row not in app_service_data:
-                                uCur.insertRow(add_row)
-                                rows_inserted += 1
-                                print(f"\tADDED ROW: {add_row}")
-
-        del uCur
+        del ucur
         return rows_inserted
 
 
