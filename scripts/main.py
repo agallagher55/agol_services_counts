@@ -1,9 +1,10 @@
 import pprint
 import datetime
 from arcgis.gis import GIS
+
 from scripts import AGOL_maps_layers
-from scripts import quality_assurance
-from scripts import decorators
+from scripts import utils
+
 
 gis = GIS('pro')
 
@@ -21,23 +22,23 @@ if __name__ == '__main__':
     layers_maps_table = r'C:\Users\gallaga\Desktop\MapsandLayers\maps_layers_agol\maps_layers_agol.gdb\layerid_mapid'
 
     # Remove Data/Clear Tables
-    AGOL_maps_layers.remove_all_rows(layer_feature)
-    AGOL_maps_layers.remove_all_rows(layer_feature_testing)
-    AGOL_maps_layers.remove_all_rows(app_feature)
-    AGOL_maps_layers.remove_all_rows(map_feature)
-    AGOL_maps_layers.remove_all_rows(layers_maps_table)
-    AGOL_maps_layers.remove_all_rows(app_service_table)
+    utils.remove_all_rows(layer_feature)
+    utils.remove_all_rows(layer_feature_testing)
+    utils.remove_all_rows(app_feature)
+    utils.remove_all_rows(map_feature)
+    utils.remove_all_rows(layers_maps_table)
+    utils.remove_all_rows(app_service_table)
 
     # GET DATA
-    # a) Get APP Data
-    app_objs = AGOL_maps_layers.get_map_app_data(item_type='app')
-
-    # 1) Get MAP Data
-    map_objs = AGOL_maps_layers.get_map_app_data(item_type='map')
+    # # a) Get APP Data
+    # app_objs = AGOL_maps_layers.get_map_app_data(item_type='app')
+    #
+    # # 1) Get MAP Data
+    # map_objs = AGOL_maps_layers.get_map_app_data(item_type='map')
 
     # X) Get ALL layer data
-    # layer_data = AGOL_maps_layers.get_map_app_data(item_type='LAYER')
-    #
+    layer_data = AGOL_maps_layers.get_map_app_data(item_type='LAYER')
+
     # # Layer data from maps
     # for obj in map_objs:
     #     # Get Layers from map
@@ -46,35 +47,36 @@ if __name__ == '__main__':
     #         layer_data.append(data)
     #
     # pprint.pprint(layer_data)
-    # # Send all layer data to db
-    # AGOL_maps_layers.layer_data_to_db(layer_data, layer_feature)
+
+    # Send data to DB
+    # Send all layer data to db
+    AGOL_maps_layers.layer_data_to_db(layer_data, layer_feature)
+
+    # # b) Send app data to db
+    # AGOL_maps_layers.map_app_data_to_db(app_objs, app_feature)
     #
-    # # Send data to DB
-    # b) Send app data to db
-    AGOL_maps_layers.map_app_data_to_db(app_objs, app_feature)
-
-    # 2) Send map data to db
-    AGOL_maps_layers.map_app_data_to_db(data=map_objs, table=map_feature)
-
+    # # 2) Send map data to db
+    # AGOL_maps_layers.map_app_data_to_db(data=map_objs, table=map_feature)
+    #
     # # 4) Build map - layers lookup table
-    # AGOL_maps_layers.layer_map_to_db(map_objs, layers_maps_table) k
+    # AGOL_maps_layers.layer_map_to_db(map_objs, layers_maps_table)
     #
-    # x) Build app - map lookup table
-    AGOL_maps_layers.appid_serviceid_to_db(app_feature, app_service_table)
+    # # x) Build app - map lookup table
+    # AGOL_maps_layers.appid_serviceid_to_db(app_feature, app_service_table)
     #
     # 5) Check for duplicates
-    AGOL_maps_layers.duplicates(app_feature)
-    AGOL_maps_layers.duplicates(map_feature)
-    # AGOL_maps_layers.duplicates(layer_feature)
-    # # AGOL_maps_layers.duplicates(layer_feature_testing)
-    # AGOL_maps_layers.duplicates(layers_maps_table)
-    # AGOL_maps_layers.duplicates(app_service_table)
+    # utils.remove_duplicates(app_feature)
+    # utils.remove_duplicates(map_feature)
+    utils.remove_duplicates(layer_feature)
+    # utils.remove_duplicates(layer_feature_testing)
+    # utils.remove_duplicates(layers_maps_table)
+    # utils.remove_duplicates(app_service_table)
     #
-    # AGOL_maps_layers.duplicates(layer_feature, remove=True)
+    # utils.remove_duplicates(layer_feature, remove=True)
     #
     # # quality_assurance.appid_mapid_populate(app_feature, map_feature, update_tables=False, update_description=False)
-    #
-    # print(datetime.datetime.now())
+
+    print(datetime.datetime.now())
 
 # TO DO
 # Function for truncating text if len greater than #

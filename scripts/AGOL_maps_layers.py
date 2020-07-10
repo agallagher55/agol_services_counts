@@ -6,76 +6,13 @@ from arcgis.gis import GIS
 from arcgis.mapping import WebMap
 
 import scripts.decorators as decorators
+from scripts import utils
 
 gis = GIS('pro')
 
 
-# Utility Functions
-@decorators.debug
-def scrape_ids_from_description(item_id):
-    """
-    Scrape service IDs from service description
-    :param item_id: id of AGOL item
-    :return: string of ids separated by '|'
-    """
-
-    item = gis.content.get(item_id)
-    pattern = r'\b\w{32}\b'
-
-    if item.description is not None:
-        agol_ids = '|'.join(set(filter(lambda x: x != item.id, re.findall(pattern, item.description))))
-
-        if agol_ids:
-            print(f"\tAGOL IDs found: {agol_ids}")
-            return agol_ids
-
-
-@decorators.debug
-def duplicates(feature, remove=False):
-    fields = [f.name for f in arcpy.ListFields(feature) if f.name != 'OBJECTID']
-    data = [row for row in arcpy.da.SearchCursor(feature, fields)]
-    dups = len(data) - len(set(data))
-
-    if dups > 0:
-        print(f"\t{dups} duplicate rows found in {feature}")
-
-        if remove:
-            del_count = 0
-            rows_processed = []
-            with arcpy.da.UpdateCursor(feature, fields) as cursor:
-                for row in cursor:
-                    if row not in rows_processed:
-                        rows_processed.append(row)
-                    else:
-                        cursor.deleteRow()
-                        del_count += 1
-            print(f"\tDeleted {del_count} records")
-            del cursor
-            return del_count
-
-        else:
-            return dups
-
-
-@decorators.debug
-def remove_all_rows(table):
-    """
-    Remove all rows from table
-    :param table:
-    :return: number of rows deleted
-    """
-    with arcpy.da.UpdateCursor(table, "*") as cur:
-        del_count = 0
-        for row in cur:
-            cur.deleteRow()
-            del_count += 1
-    print(f"\tDeleted {del_count} records")
-    del cur
-    return del_count
-
-
 # GET DATA FROM AGOL
-@decorators.debug
+@decorators.logger
 def clean_layer_data(layer_data):
     """
     :param layer_data: list output from get_map_layer_data function
@@ -100,7 +37,7 @@ def clean_layer_data(layer_data):
 
 
 # MAP, APP, LAYER DATA
-@decorators.debug
+@decorators.logger
 def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=999, item_type='MAP'):
     """
     :param my_items: Get maps the belong to current user
@@ -124,6 +61,7 @@ def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=
         raise Exception(f"{item_type.upper()} is not a valid service item type!")
 
     access_types = ['private', 'shared', 'public']
+
     if access not in access_types and len(access) > 0:
         raise Exception(f"{access} is not recognized as a valid access type -> {', '.join(access_types)}")
 
@@ -140,7 +78,7 @@ def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=
     data_objs = []
 
     for obj in item_objs:
-        agol_ids = scrape_ids_from_description(obj.id)
+        agol_ids = utils.scrape_ids_from_description(obj.id)
 
         data_obj = {
             'id': obj.id,
@@ -164,7 +102,7 @@ def get_map_app_data(my_items=False, owner='**', title='', access='', max_items=
 
 
 # LAYER DATA, FROM MAPS
-@decorators.debug
+@decorators.logger
 def get_layers_from_mapid(map_id):
     """
     :param map_id: AGOL unique item ID
@@ -223,7 +161,7 @@ def get_layers_from_mapid(map_id):
 
 
 # EXPORT DATA
-@decorators.debug
+@decorators.logger
 def map_app_data_to_db(data, table):
     """
     Transfer data to db
@@ -277,7 +215,7 @@ def map_app_data_to_db(data, table):
     return count
 
 
-@decorators.debug
+@decorators.logger
 def layer_data_to_db(data, table, from_map_id=False):
     """
     Transfer data to db
@@ -290,10 +228,11 @@ def layer_data_to_db(data, table, from_map_id=False):
 
     print(f"Running {layer_data_to_db.__name__}...")
 
-    fields = ['ID', 'TITLE', 'ACCESS', 'DEFINITION_EXPRESSION', 'CREATED_DATE', 'MODIFIED_DATE', 'OWNER', 'NUM_VIEWS',
-              'TYPE', 'DESCRIPTION_IDS', 'URL']
+    fields = ['ID', 'TITLE', 'ACCESS', 'DEFINITION_EXPRESSION', 'CREATED_DATE', 'MODIFIED_DATE',
+              'OWNER', 'NUM_VIEWS', 'TYPE', 'DESCRIPTION_IDS', 'URL']
 
     current_ids = [row[0] for row in arcpy.da.SearchCursor(table, 'ID')]
+
     # Filter out ids already in target table
     data = [obj for obj in data if obj['id'] not in current_ids and obj['id'] != 0]
 
@@ -344,7 +283,7 @@ def layer_data_to_db(data, table, from_map_id=False):
     return count
 
 
-@decorators.debug
+@decorators.logger
 def layer_map_to_db(map_data, table):
     """
     Transfer layer data to db
@@ -379,7 +318,7 @@ def layer_map_to_db(map_data, table):
     print(f"\tAdded {len(added_rows)} rows")
 
 
-@decorators.debug
+@decorators.logger
 def appid_serviceid_to_db(app_table, appid_serviceid_table):
     """
     APP ID - Scraped Service IDs
@@ -402,7 +341,7 @@ def appid_serviceid_to_db(app_table, appid_serviceid_table):
             print(f"AGOL IDs: {agol_ids}")
 
             if agol_ids and len(agol_ids) > 295:
-                agol_ids = scrape_ids_from_description(app_id)
+                agol_ids = utils.scrape_ids_from_description(app_id)
 
             rows_inserted = 0
 
